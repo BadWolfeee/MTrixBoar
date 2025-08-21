@@ -11,3 +11,6 @@ Dashboard for visualizing data from MT-517 devices stored in PostgreSQL (replace
 ```bash
 npm install
 npm run dev
+
+cd PostgreSQLVisual
+dotnet run
