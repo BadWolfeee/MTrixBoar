@@ -1,0 +1,145 @@
+﻿@model IEnumerable<PostgreSQLVisual.Models.SensorData>
+@using Newtonsoft.Json
+
+@{
+    ViewData["Title"] = "Sensor Data";
+
+    // Serialize the chart data sets
+    var chartDataSets = new List<object>(); // This should be replaced with actual data
+                                            // Populate chartDataSets with data...
+    var serializedDataSets = Newtonsoft.Json.JsonConvert.SerializeObject(chartDataSets);
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<!-- Time Period and Date Range Selection -->
+<div>
+    <label for="timePeriod">Time Period:</label>
+    <select id="timePeriod" name="timePeriod">
+        <option value="hour">Last Hour</option>
+        <option value="day" selected>Last Day</option>
+        <option value="week">Last Week</option>
+        <option value="month">Last Month</option>
+        <option value="year">Last Year</option>
+        <!-- Add more options as needed -->
+    </select>
+
+    <button id="loadDataButton">Load Data</button>
+</div>
+
+<div>
+    <label for="startDate">Start Date:</label>
+    <input type="date" id="startDate" name="startDate">
+
+    <label for="endDate">End Date:</label>
+    <input type="date" id="endDate" name="endDate">
+
+    <button id="updateChartButton">Update Chart</button>
+</div>
+
+<!-- Chart Container -->
+<canvas id="sensorDataChart" width="400" height="200"></canvas>
+
+<!-- Table Container -->
+<div style="height: 400px; overflow-y: scroll;">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>MtName</th>
+                <th>MtValue</th>
+                <th>MtTime</th>
+                <th>MtQuality</th>
+            </tr>
+        </thead>
+        <tbody></tbody> <!-- Table body will be populated dynamically -->
+    </table>
+</div>
+
+@section Scripts {
+    <!-- Include Chart.js and Luxon for chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@2.0.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.0.0"></script>
+
+    <script>
+        // Define colors array in the outer scope so it's accessible to all functions
+        const colors = [
+            "rgba(255, 99, 132, 0.2)", // red
+            "rgba(54, 162, 235, 0.2)", // blue
+            "rgba(255, 206, 86, 0.2)", // yellow
+            // ...more colors as needed
+        ];
+
+        var datasets = @Html.Raw(serializedDataSets);
+        var ctx = document.getElementById('sensorDataChart').getContext('2d');
+        var sensorDataChart = new Chart(ctx, {
+            type: 'line',
+            data: { datasets: datasets },
+            options: {
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'minute',
+                            parser: 'yyyy-MM-dd HH:mm:ss',
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        suggestedMax: 100, // Adjust this value based on the expected maximum
+                        ticks: {
+                            autoSkip: true,
+                            maxTicksLimit: 10 // Limits the number of Y-axis ticks
+                        }
+                    }
+                },
+                elements: {
+                    point: {
+                        radius: 0, // hides the points
+                        hitRadius: 0, // disables point interaction
+                        hoverRadius: 0 // disables hover effect on points
+                    },
+                    line: {
+                        borderWidth: 1 // you can adjust the line width if desired
+                    }
+                },
+                tooltips: {
+                    enabled: false // disables tooltips
+                },
+                maintainAspectRatio: false // ensures the chart does not distort in responsive layouts
+            }
+        });
+
+        // Function to update the chart and table
+        function updateChartAndTable() {
+            var timePeriod = document.getElementById('timePeriod').value;
+            var startDate = document.getElementById('startDate').value;
+            var endDate = document.getElementById('endDate').value;
+
+            // Fetch data based on the selected time period or start/end date
+            // Assume fetchSensorData is a function that returns a promise with the data
+            fetchSensorData(timePeriod, startDate, endDate).then(data => {
+                // Update the table with the fetched data
+                updateTable(data);
+
+                // Update the chart with the fetched data
+                var transformedData = transformSensorDataToChartData(data);
+                sensorDataChart.data.datasets = transformedData;
+                sensorDataChart.update();
+            }).catch(error => {
+                console.error('Error fetching sensor data:', error);
+                // Handle error, maybe show a message to the user
+            });
+        }
+
+        // Define fetchSensorData,
+
+
+        // Event listeners for buttons
+        document.getElementById('loadDataButton').addEventListener('click', updateChartAndTable);
+        document.getElementById('updateChartButton').addEventListener('click', updateChartAndTable);
+
+        // Other functions such as transformSensorDataToChartData, updateTable, etc.
+        // ...
+    </script>
+}
