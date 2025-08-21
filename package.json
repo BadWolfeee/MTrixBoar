@@ -1,0 +1,26 @@
+{
+  "name": "mtrixboar",
+  "version": "1.0.0",
+  "description": "Dashboard for visualizing data from MT-517 devices stored in PostgreSQL (replacement for DataPortal).",
+  "main": "index.js",
+  "scripts": {
+    "dev:front": "npm --prefix frontend start",
+    "dev:back": "python main.py",
+    "dev:all": "concurrently \"npm --prefix frontend start\" \"python main.py\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BadWolfeee/MTrixBoar.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/BadWolfeee/MTrixBoar/issues"
+  },
+  "homepage": "https://github.com/BadWolfeee/MTrixBoar#readme",
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
