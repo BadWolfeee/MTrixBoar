@@ -1,0 +1,23 @@
+# --- Node / Frontend ---
+node_modules/
+dist/
+.next/
+out/
+coverage/
+
+# --- .NET / Backend ---
+bin/
+obj/
+*.user
+*.suo
+*.pdb
+
+# --- IDEs ---
+.vs/
+.vscode/
+
+# --- Environment / OS ---
+.env
+.env.*
+.DS_Store
+Thumbs.db
