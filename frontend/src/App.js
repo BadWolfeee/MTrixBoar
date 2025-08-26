@@ -1,69 +1,16 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import DashboardLayout from './layout/DashboardLayout';
-import FilterDrawerContent from './components/FilterDrawerContent';
-import SensorDataDashboard from './components/SensorDataDashboard';
-import { pivotSensorData } from './utils/pivotSensorData';
+import { Routes, Route, Navigate } from "react-router-dom";
+import SensorLanding from "./components/SensorLanding";
+import SensorPage from "./components/SensorPage";
+import DashboardPage from "./components/DashboardPage";
 
-function groupDataBySensorType(rows) {
-  const groups = {};
-  if (!rows) return groups;
-  rows.forEach(item => {
-    const parts = item.mt_name.split('.');
-    const sensorType = parts[parts.length - 1];
-    if (!groups[sensorType]) {
-      groups[sensorType] = [];
-    }
-    groups[sensorType].push(item);
-  });
-  return groups;
-}
-
-function App() {
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
-  const [sensorType, setSensorType] = useState('');
-  const [data, setData] = useState([]);
-
-  const fetchData = () => {
-    // Build your URL
-    let url = '/api/sensor-data/filtered?';
-    if (startTime) url += `start=${encodeURIComponent(startTime)}&`;
-    if (endTime) url += `end=${encodeURIComponent(endTime)}&`;
-    if (sensorType) url += `sensor_type=${encodeURIComponent(sensorType)}`;
-    // Make request
-    axios.get(url)
-      .then(res => setData(res.data))
-      .catch(err => console.error(err));
-  };
-
-  const groupedData = groupDataBySensorType(data);
-  const pivotedData = pivotSensorData(data);
-
-  // Drawer content
-  const drawerContent = (
-    <FilterDrawerContent
-      startTime={startTime} setStartTime={setStartTime}
-      endTime={endTime} setEndTime={setEndTime}
-      sensorType={sensorType} setSensorType={setSensorType}
-      onFetch={fetchData}
-    />
-  );
-
-  // Main content (no big "Sensor Data Dashboard" title)
-  const mainContent = (
-    <SensorDataDashboard
-      groupedData={groupedData}
-      pivotedData={pivotedData}
-    />
-  );
-
+export default function App() {
   return (
-    <DashboardLayout
-      drawerContent={drawerContent}
-      mainContent={mainContent}
-    />
+    <Routes>
+      <Route path="/" element={<SensorLanding />} />
+      <Route path="/sensor/:table" element={<SensorPage />} />
+      <Route path="/dashboard" element={<DashboardPage />} />
+      {/* Optional: redirect unknown routes to home */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
-
-export default App;

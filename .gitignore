@@ -8,8 +8,8 @@ frontend/build/
 frontend/.cache/
 
 # --- Backend (Python) ---
-backend/.venv/
-backend/venv/
+.venv/
+venv/
 backend/__pycache__/
 backend/.pytest_cache/
 backend/.mypy_cache/
@@ -29,7 +29,10 @@ logs/
 .DS_Store
 Thumbs.db
 .vscode/
+dist/
+build/
 
-# Ignore Python caches
+# Python
+.venv/
 __pycache__/
 *.pyc

@@ -2,7 +2,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { createTheme, ThemeProvider, CssBaseline } from '@mui/material';
-import App from './App';
+import { BrowserRouter } from "react-router-dom";
+import "./index.css";
+import App from "./App";
 
 const theme = createTheme({
   spacing: 4,
@@ -21,6 +23,8 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <ThemeProvider theme={theme}>
     <CssBaseline />
+    <BrowserRouter>
     <App />
+    </BrowserRouter>
   </ThemeProvider>
 );
