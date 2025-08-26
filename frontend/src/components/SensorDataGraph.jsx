@@ -1,73 +1,74 @@
-// src/components/SensorDataGraph.jsx
-import React from 'react';
-import Plot from 'react-plotly.js';
+// frontend/src/components/SensorDataGraph.js
+import React, { useMemo } from "react";
+import {
+  ResponsiveContainer,
+  LineChart, Line,
+  XAxis, YAxis, Tooltip, CartesianGrid
+} from "recharts";
 
-function hexToRgba(hex, opacity) {
-  // Remove '#' if present
-  hex = hex.replace(/^#/, '');
-  let r, g, b;
-  if (hex.length === 3) {
-    // e.g. "#abc" => "aabbcc"
-    r = parseInt(hex[0] + hex[0], 16);
-    g = parseInt(hex[1] + hex[1], 16);
-    b = parseInt(hex[2] + hex[2], 16);
-  } else if (hex.length === 6) {
-    r = parseInt(hex.substring(0, 2), 16);
-    g = parseInt(hex.substring(2, 4), 16);
-    b = parseInt(hex.substring(4, 6), 16);
-  } else {
-    throw new Error('Invalid hex color format');
-  }
-  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+function thinSeries(arr, maxPoints = 400) {
+  if (!arr || arr.length <= maxPoints) return arr ?? [];
+  const step = Math.ceil(arr.length / maxPoints);
+  const out = [];
+  for (let i = 0; i < arr.length; i += step) out.push(arr[i]);
+  return out;
 }
 
+function fmtTick(ts, long = false) {
+  const d = new Date(ts);
+  return long
+    ? d.toLocaleString([], { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
 
-function SensorDataGraph({ data, color }) {
-  // Set a default color if none is provided.
-  const baseColor = color || '#1976d2'; // default blue
-  // Create a fill color with transparency based on the base color.
-  // For example, blue: rgba(25, 118, 210, 0.2)
-  const fillColor = hexToRgba(baseColor, 0.2);
+export default function SensorDataGraph({
+  data = [],
+  color = undefined,
+  valueKey = "mt_value",
+  timeKey = "mt_time",
+  maxPoints = 400,
+}) {
+  const prepared = useMemo(() => {
+    const mapped = (data ?? [])
+      .filter(d => d && d[timeKey] != null && d[valueKey] != null)
+      .map(d => ({
+        t: new Date(d[timeKey]).getTime(),
+        v: typeof d[valueKey] === "number" ? d[valueKey] : Number(d[valueKey]),
+      }))
+      .sort((a, b) => a.t - b.t);
+    return thinSeries(mapped, maxPoints);
+  }, [data, timeKey, valueKey, maxPoints]);
 
-  const trace = {
-    x: data.map(d => d.mt_time),
-    y: data.map(d => parseFloat(d.mt_value)),
-    mode: 'lines',
-    type: 'scatter',
-    name: 'Sensor',
-    line: {
-      color: baseColor,
-      width: 2,
-    },
-    marker: {
-      color: baseColor,
-    },
-    fill: 'tozeroy',    // fills the area between the trace and y=0
-    fillcolor: fillColor,
-  };
-
-  const layout = {
-    autosize: true,
-    paper_bgcolor: 'transparent',
-    plot_bgcolor: 'transparent',
-    font: { color: '#fff' },
-    margin: { l: 40, r: 20, t: 20, b: 40 },
-    legend: {
-      orientation: 'h',
-      x: 0.5,
-      xanchor: 'center',
-      y: 1.1,
-    },
-  };
+  const spanMs = prepared.length ? prepared[prepared.length - 1].t - prepared[0].t : 0;
+  const longFormat = spanMs > 24 * 60 * 60 * 1000;
 
   return (
-    <Plot
-      data={[trace]}
-      layout={layout}
-      style={{ width: '100%', height: '100%', minWidth: '300px', minHeight: '300px' }}
-      useResizeHandler
-    />
+    <ResponsiveContainer width="100%" height={250}>
+      <LineChart data={prepared} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+        <CartesianGrid strokeOpacity={0.2} />
+        <XAxis
+          dataKey="t"
+          type="number"
+          domain={["auto", "auto"]}
+          scale="time"
+          tickFormatter={(ts) => fmtTick(ts, longFormat)}
+          interval="preserveStartEnd"
+          minTickGap={40}
+        />
+        <YAxis width={48} tickMargin={6} />
+        <Tooltip
+          labelFormatter={(ts) => new Date(ts).toLocaleString()}
+          formatter={(value) => [value, "value"]}
+        />
+        <Line
+          type="monotone"
+          dataKey="v"
+          dot={false}
+          isAnimationActive={false}
+          stroke={color}
+          strokeWidth={2}
+        />
+      </LineChart>
+    </ResponsiveContainer>
   );
 }
-
-export default SensorDataGraph;
