@@ -7,8 +7,9 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - FLASK_APP=app/main.py
+      - FLASK_APP=app:create_app
       - FLASK_RUN_HOST=0.0.0.0
+      - DATABASE_URL=postgresql://postgres:admin@db:5432/telemetria
     depends_on:
       - db
 

@@ -10,8 +10,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the backend code
 COPY . .
 
-# Set environment variables for Flask
-ENV FLASK_APP=app/main.py
+# Set environment variables for Flask (use factory)
+ENV FLASK_APP=app:create_app
 ENV FLASK_RUN_HOST=0.0.0.0
 
 # Expose the Flask port
