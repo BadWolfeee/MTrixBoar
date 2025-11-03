@@ -229,21 +229,22 @@ def get_sensor_data_by_table():
             f'''
             SELECT
                 to_timestamp(floor(extract(epoch from mt_time)/:bucket)::bigint * :bucket) AS bucket_start,
+                mt_name,
                 AVG(CASE WHEN mt_value ~ '^[+-]?\d+(\.\d+)?$' THEN mt_value::double precision END) AS avg,
                 MIN(CASE WHEN mt_value ~ '^[+-]?\d+(\.\d+)?$' THEN mt_value::double precision END) AS min,
                 MAX(CASE WHEN mt_value ~ '^[+-]?\d+(\.\d+)?$' THEN mt_value::double precision END) AS max,
                 COUNT(*) AS count
             FROM "{SCHEMA}"."{sensor}"
             {where_sql}
-            GROUP BY bucket_start
-            ORDER BY bucket_start ASC
+            GROUP BY bucket_start, mt_name
+            ORDER BY bucket_start ASC, mt_name ASC
             LIMIT :max_buckets
             '''
         )
         params["bucket"] = bucket
         params["max_buckets"] = target_points + 5
         rows = db.session.execute(q, params).mappings().all()
-        return jsonify([{ 'bucket_start': (r['bucket_start'].isoformat() if r['bucket_start'] else None), 'avg': r['avg'], 'min': r['min'], 'max': r['max'], 'count': r['count'] } for r in rows])
+        return jsonify([{ 'bucket_start': (r['bucket_start'].isoformat() if r['bucket_start'] else None), 'mt_name': r['mt_name'], 'avg': r['avg'], 'min': r['min'], 'max': r['max'], 'count': r['count'] } for r in rows])
 
     # Raw rows path with cursor/offset support
     q = text(
