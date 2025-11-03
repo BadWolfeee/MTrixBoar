@@ -32,6 +32,7 @@ function shouldDownsample(startIso, endIso) {
 
 export default function SensorPage() {
   const { table } = useParams(); // e.g. "sens01"
+  const PAGE_SIZE = 1000;
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [data, setData] = useState([]);
@@ -40,6 +41,7 @@ export default function SensorPage() {
   const [nextAfter, setNextAfter] = useState(null);
   const [usingDownsample, setUsingDownsample] = useState(false);
   const [latest, setLatest] = useState(null);
+  const [activeQuick, setActiveQuick] = useState(null);
 
   const load = async () => {
     if (!table) return;
@@ -68,12 +70,14 @@ export default function SensorPage() {
           start: startTime,
           end: endTime,
           order: "asc",
-          limit: 1000,
+          limit: PAGE_SIZE,
         });
         const rows = Array.isArray(resp) ? resp : resp.rows || [];
         setData(rows);
         setNextAfter(Array.isArray(resp) ? null : resp.next_after || null);
       }
+      // derive active quick after loading
+      setActiveQuick(deriveActiveQuick(latest, startTime, endTime));
     } catch (e) {
       setErr(String(e));
     } finally {
@@ -117,7 +121,7 @@ export default function SensorPage() {
         start: startTime,
         end: endTime,
         order: "asc",
-        limit: 1000,
+        limit: PAGE_SIZE,
         after: nextAfter,
       });
       const rows = Array.isArray(resp) ? resp : resp.rows || [];
@@ -130,6 +134,32 @@ export default function SensorPage() {
     }
   };
 
+  function deriveActiveQuick(latestIso, startIso, endIso) {
+    try {
+      if (!latestIso || !startIso || !endIso) return null;
+      const tol = 60 * 1000; // 1 minute tolerance
+      const latestMs = new Date(latestIso).getTime();
+      const startMs = new Date(startIso).getTime();
+      const endMs = new Date(endIso).getTime();
+      const spans = {
+        '1h': 1 * 60 * 60 * 1000,
+        '6h': 6 * 60 * 60 * 1000,
+        '24h': 24 * 60 * 60 * 1000,
+        '7d': 7 * 24 * 60 * 60 * 1000,
+        '30d': 30 * 24 * 60 * 60 * 1000,
+        '180d': 180 * 24 * 60 * 60 * 1000,
+      };
+      for (const [k, delta] of Object.entries(spans)) {
+        if (Math.abs(endMs - latestMs) <= tol && Math.abs((endMs - startMs) - delta) <= tol) {
+          return k;
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
   const drawerContent = (
     <div>
       <div style={{ marginBottom: 16 }}>
@@ -140,6 +170,7 @@ export default function SensorPage() {
           color="primary"
           variant="contained"
           size="medium"
+          fullWidth
           sx={{ textTransform: 'none', fontWeight: 700, boxShadow: 'none' }}
         >
           Back to sensors
@@ -164,9 +195,11 @@ export default function SensorPage() {
           const endIso = new Date(end).toISOString().slice(0, 16);
           setStartTime(startIso);
           setEndTime(endIso);
+          setActiveQuick(span);
           // After setting, fetch
           setTimeout(load, 0);
         }}
+        activeQuick={activeQuick}
       />
     </div>
   );
@@ -187,7 +220,9 @@ export default function SensorPage() {
           <SensorDataDashboard groupedData={groupedData} pivotedData={pivotedData} />
           {!usingDownsample && nextAfter && (
             <div style={{ marginTop: 8 }}>
-              <button onClick={loadMore}>Load more</button>
+              <Button onClick={loadMore} variant="contained" size="small">
+                Load more data ({PAGE_SIZE} rows)
+              </Button>
             </div>
           )}
           {usingDownsample && (

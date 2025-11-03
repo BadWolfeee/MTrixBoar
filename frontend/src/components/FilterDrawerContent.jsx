@@ -7,6 +7,7 @@ const FilterDrawerContent = ({
   sensorType, setSensorType,
   onFetch,
   onQuickRange,
+  activeQuick,
 }) => {
   return (
     <Box>
@@ -25,12 +26,20 @@ const FilterDrawerContent = ({
         gap: 1.25,
         mb: 2.5
       }}>
-        <Button size="medium" variant="contained" sx={{ fontWeight: 700 }} onClick={() => onQuickRange && onQuickRange('1h')}>1H</Button>
-        <Button size="medium" variant="contained" sx={{ fontWeight: 700 }} onClick={() => onQuickRange && onQuickRange('6h')}>6H</Button>
-        <Button size="medium" variant="contained" sx={{ fontWeight: 700 }} onClick={() => onQuickRange && onQuickRange('24h')}>24H</Button>
-        <Button size="medium" variant="contained" sx={{ fontWeight: 700 }} onClick={() => onQuickRange && onQuickRange('7d')}>7D</Button>
-        <Button size="medium" variant="contained" sx={{ fontWeight: 700 }} onClick={() => onQuickRange && onQuickRange('30d')}>30D</Button>
-        <Button size="medium" variant="contained" sx={{ fontWeight: 700 }} onClick={() => onQuickRange && onQuickRange('180d')}>180D</Button>
+        {[
+          ['1h','1H'],['6h','6H'],['24h','24H'],['7d','7D'],['30d','30D'],['180d','180D']
+        ].map(([val,label]) => (
+          <Button
+            key={val}
+            size="medium"
+            variant={activeQuick === val ? 'contained' : 'outlined'}
+            color={activeQuick === val ? 'primary' : 'inherit'}
+            sx={{ fontWeight: 700 }}
+            onClick={() => onQuickRange && onQuickRange(val)}
+          >
+            {label}
+          </Button>
+        ))}
       </Box>
       <TextField
         label="Start Time"
