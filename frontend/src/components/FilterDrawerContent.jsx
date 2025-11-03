@@ -19,12 +19,17 @@ const FilterDrawerContent = ({
       >
         Sensor Dashboard
       </Typography>
-      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-        <Button size="small" variant="outlined" onClick={() => onQuickRange && onQuickRange('1h')}>1h</Button>
-        <Button size="small" variant="outlined" onClick={() => onQuickRange && onQuickRange('6h')}>6h</Button>
-        <Button size="small" variant="outlined" onClick={() => onQuickRange && onQuickRange('24h')}>24h</Button>
-        <Button size="small" variant="outlined" onClick={() => onQuickRange && onQuickRange('7d')}>7d</Button>
-        <Button size="small" variant="outlined" onClick={() => onQuickRange && onQuickRange('30d')}>30d</Button>
+      <Box sx={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: 1,
+        mb: 2
+      }}>
+        <Button size="medium" variant="contained" onClick={() => onQuickRange && onQuickRange('1h')}>1H</Button>
+        <Button size="medium" variant="contained" onClick={() => onQuickRange && onQuickRange('6h')}>6H</Button>
+        <Button size="medium" variant="contained" onClick={() => onQuickRange && onQuickRange('24h')}>24H</Button>
+        <Button size="medium" variant="contained" onClick={() => onQuickRange && onQuickRange('7d')}>7D</Button>
+        <Button size="medium" variant="contained" onClick={() => onQuickRange && onQuickRange('30d')}>30D</Button>
       </Box>
       <TextField
         label="Start Time"

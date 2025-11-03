@@ -28,6 +28,8 @@ export default function SensorDataGraph({
   timeKey = "mt_time",
   maxPoints = 400,
 }) {
+  const axisTick = { fill: "#cfd8dc", fontSize: 12 };
+  const axisStroke = "#90a4ae";
   const prepared = useMemo(() => {
     const mapped = (data ?? [])
       .filter(d => d && d[timeKey] != null && d[valueKey] != null)
@@ -45,17 +47,20 @@ export default function SensorDataGraph({
   return (
     <ResponsiveContainer width="100%" height={250}>
       <LineChart data={prepared} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-        <CartesianGrid strokeOpacity={0.2} />
+        <CartesianGrid stroke="#78909c" strokeOpacity={0.25} />
         <XAxis
           dataKey="t"
           type="number"
           domain={["auto", "auto"]}
           scale="time"
           tickFormatter={(ts) => fmtTick(ts, longFormat)}
+          tick={axisTick}
+          axisLine={{ stroke: axisStroke }}
+          tickLine={{ stroke: axisStroke }}
           interval="preserveStartEnd"
           minTickGap={40}
         />
-        <YAxis width={48} tickMargin={6} />
+        <YAxis width={48} tickMargin={6} tick={axisTick} axisLine={{ stroke: axisStroke }} tickLine={{ stroke: axisStroke }} />
         <Tooltip
           labelFormatter={(ts) => new Date(ts).toLocaleString()}
           formatter={(value) => [value, "value"]}

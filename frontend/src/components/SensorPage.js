@@ -5,6 +5,8 @@ import FilterDrawerContent from "./FilterDrawerContent";
 import SensorDataDashboard from "./SensorDataDashboard";
 import { pivotSensorData } from "../utils/pivotSensorData";
 import { fetchSensorDataByTable, fetchSensorRange } from "../services/api";
+import { Button } from "@mui/material";
+import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 
 // Group rows by the trailing token in mt_name
 function groupDataBySensorType(rows) {
@@ -131,9 +133,17 @@ export default function SensorPage() {
   const drawerContent = (
     <div>
       <div style={{ marginBottom: 12 }}>
-        <Link to="/" style={{ color: "#ddd" }}>
-          ← Back to sensors
-        </Link>
+        <Button
+          component={Link}
+          to="/"
+          startIcon={<ArrowBackIosNewIcon />}
+          color="primary"
+          variant="outlined"
+          size="small"
+          sx={{ textTransform: 'none', fontWeight: 600 }}
+        >
+          Back to sensors
+        </Button>
       </div>
       <FilterDrawerContent
         startTime={startTime}
