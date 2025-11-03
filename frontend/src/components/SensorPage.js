@@ -27,7 +27,8 @@ function shouldDownsample(startIso, endIso) {
   const start = new Date(startIso).getTime();
   const end = new Date(endIso).getTime();
   const spanMs = end - start;
-  return spanMs > 3 * 24 * 60 * 60 * 1000; // > 3 days
+  // Use raw for spans up to 24h, downsample beyond
+  return spanMs > 24 * 60 * 60 * 1000;
 }
 
 export default function SensorPage() {
@@ -202,6 +203,8 @@ export default function SensorPage() {
           setStartTime(startIso);
           setEndTime(endIso);
           setActiveQuick(span);
+          // Update mode immediately so the note flips without waiting
+          setUsingDownsample(shouldDownsample(startIso, endIso));
           // After setting, fetch
           setTimeout(load, 0);
         }}
