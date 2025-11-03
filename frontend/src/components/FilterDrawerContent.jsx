@@ -22,14 +22,15 @@ const FilterDrawerContent = ({
       <Box sx={{
         display: 'grid',
         gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: 1,
-        mb: 2
+        gap: 1.25,
+        mb: 2.5
       }}>
-        <Button size="medium" variant="contained" onClick={() => onQuickRange && onQuickRange('1h')}>1H</Button>
-        <Button size="medium" variant="contained" onClick={() => onQuickRange && onQuickRange('6h')}>6H</Button>
-        <Button size="medium" variant="contained" onClick={() => onQuickRange && onQuickRange('24h')}>24H</Button>
-        <Button size="medium" variant="contained" onClick={() => onQuickRange && onQuickRange('7d')}>7D</Button>
-        <Button size="medium" variant="contained" onClick={() => onQuickRange && onQuickRange('30d')}>30D</Button>
+        <Button size="medium" variant="contained" sx={{ fontWeight: 700 }} onClick={() => onQuickRange && onQuickRange('1h')}>1H</Button>
+        <Button size="medium" variant="contained" sx={{ fontWeight: 700 }} onClick={() => onQuickRange && onQuickRange('6h')}>6H</Button>
+        <Button size="medium" variant="contained" sx={{ fontWeight: 700 }} onClick={() => onQuickRange && onQuickRange('24h')}>24H</Button>
+        <Button size="medium" variant="contained" sx={{ fontWeight: 700 }} onClick={() => onQuickRange && onQuickRange('7d')}>7D</Button>
+        <Button size="medium" variant="contained" sx={{ fontWeight: 700 }} onClick={() => onQuickRange && onQuickRange('30d')}>30D</Button>
+        <Button size="medium" variant="contained" sx={{ fontWeight: 700 }} onClick={() => onQuickRange && onQuickRange('180d')}>180D</Button>
       </Box>
       <TextField
         label="Start Time"
@@ -37,7 +38,7 @@ const FilterDrawerContent = ({
         value={startTime}
         onChange={(e) => setStartTime(e.target.value)}
         fullWidth
-        sx={{ mb: 2 }}
+        sx={{ mt: 0.5, mb: 2 }}
         InputLabelProps={{ shrink: true }}
       />
       <TextField
@@ -46,10 +47,10 @@ const FilterDrawerContent = ({
         value={endTime}
         onChange={(e) => setEndTime(e.target.value)}
         fullWidth
-        sx={{ mb: 2 }}
+        sx={{ mb: 2.5 }}
         InputLabelProps={{ shrink: true }}
       />
-      <Button variant="contained" onClick={onFetch} fullWidth>
+      <Button variant="contained" onClick={onFetch} fullWidth sx={{ py: 1 }}>
         Fetch Data
       </Button>
     </Box>

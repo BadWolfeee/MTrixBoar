@@ -132,15 +132,15 @@ export default function SensorPage() {
 
   const drawerContent = (
     <div>
-      <div style={{ marginBottom: 12 }}>
+      <div style={{ marginBottom: 16 }}>
         <Button
           component={Link}
           to="/"
           startIcon={<ArrowBackIosNewIcon />}
           color="primary"
-          variant="outlined"
-          size="small"
-          sx={{ textTransform: 'none', fontWeight: 600 }}
+          variant="contained"
+          size="medium"
+          sx={{ textTransform: 'none', fontWeight: 700, boxShadow: 'none' }}
         >
           Back to sensors
         </Button>
