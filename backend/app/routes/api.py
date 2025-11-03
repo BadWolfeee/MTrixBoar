@@ -154,6 +154,39 @@ def list_sensors():
 
     return jsonify(sensors)
 
+@api_bp.route('/sensor-data/range', methods=['GET'])
+def get_sensor_time_range():
+    """
+    Return min/max mt_time for a specific sensor table, plus approx row count.
+    Params:
+      sensor: required (e.g., sens00)
+    Response: { min_time, max_time, approx_rows }
+    """
+    sensor = request.args.get('sensor')
+    if not sensor or not SENSOR_TABLE_RE.fullmatch(sensor):
+        return jsonify({"error": "Invalid or missing 'sensor' (expected like sens00)"}), 400
+
+    # min/max times
+    q_range = text(f'''SELECT MIN(mt_time) AS min_time, MAX(mt_time) AS max_time FROM "{SCHEMA}"."{sensor}"''')
+    row = db.session.execute(q_range).mappings().first()
+    min_time = row['min_time']
+    max_time = row['max_time']
+
+    # approx rows from pg_stat_user_tables
+    q_count = text("""
+        SELECT n_live_tup AS approx_rows
+        FROM pg_stat_user_tables
+        WHERE schemaname = :schema AND relname = :table
+    """)
+    c = db.session.execute(q_count, {"schema": SCHEMA, "table": sensor}).mappings().first()
+    approx_rows = c['approx_rows'] if c else None
+
+    return jsonify({
+        'min_time': min_time.isoformat() if min_time else None,
+        'max_time': max_time.isoformat() if max_time else None,
+        'approx_rows': approx_rows,
+    })
+
 @api_bp.route('/sensor-data/by-table', methods=['GET'])
 def get_sensor_data_by_table():
     """

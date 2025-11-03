@@ -5,7 +5,8 @@ const FilterDrawerContent = ({
   startTime, setStartTime,
   endTime, setEndTime,
   sensorType, setSensorType,
-  onFetch
+  onFetch,
+  onQuickRange,
 }) => {
   return (
     <Box>
@@ -18,6 +19,13 @@ const FilterDrawerContent = ({
       >
         Sensor Dashboard
       </Typography>
+      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+        <Button size="small" variant="outlined" onClick={() => onQuickRange && onQuickRange('1h')}>1h</Button>
+        <Button size="small" variant="outlined" onClick={() => onQuickRange && onQuickRange('6h')}>6h</Button>
+        <Button size="small" variant="outlined" onClick={() => onQuickRange && onQuickRange('24h')}>24h</Button>
+        <Button size="small" variant="outlined" onClick={() => onQuickRange && onQuickRange('7d')}>7d</Button>
+        <Button size="small" variant="outlined" onClick={() => onQuickRange && onQuickRange('30d')}>30d</Button>
+      </Box>
       <TextField
         label="Start Time"
         type="datetime-local"

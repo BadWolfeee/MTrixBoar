@@ -4,7 +4,7 @@ import DashboardLayout from "../layout/DashboardLayout";
 import FilterDrawerContent from "./FilterDrawerContent";
 import SensorDataDashboard from "./SensorDataDashboard";
 import { pivotSensorData } from "../utils/pivotSensorData";
-import { fetchSensorDataByTable } from "../services/api";
+import { fetchSensorDataByTable, fetchSensorRange } from "../services/api";
 
 // Group rows by the trailing token in mt_name
 function groupDataBySensorType(rows) {
@@ -37,6 +37,7 @@ export default function SensorPage() {
   const [err, setErr] = useState("");
   const [nextAfter, setNextAfter] = useState(null);
   const [usingDownsample, setUsingDownsample] = useState(false);
+  const [latest, setLatest] = useState(null);
 
   const load = async () => {
     if (!table) return;
@@ -79,7 +80,26 @@ export default function SensorPage() {
   };
 
   useEffect(() => {
-    load();
+    const init = async () => {
+      if (!table) return;
+      try {
+        // Fetch range to get latest time; default to last 24h
+        const r = await fetchSensorRange(table);
+        if (r && r.max_time) {
+          setLatest(r.max_time);
+          if (!startTime && !endTime) {
+            const endIso = r.max_time.slice(0, 16); // YYYY-MM-DDTHH:mm
+            const endMs = new Date(r.max_time).getTime();
+            const startMs = endMs - 24 * 60 * 60 * 1000;
+            const startIso = new Date(startMs).toISOString().slice(0, 16);
+            setStartTime(startIso);
+            setEndTime(endIso);
+          }
+        }
+      } catch (_) {}
+      load();
+    };
+    init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [table]);
 
@@ -123,6 +143,20 @@ export default function SensorPage() {
         sensorType={""} // not used on this page
         setSensorType={() => {}}
         onFetch={load}
+        onQuickRange={(span) => {
+          if (!latest) return;
+          const end = new Date(latest).getTime();
+          let deltaMs = 0;
+          if (span.endsWith('h')) deltaMs = parseInt(span) * 60 * 60 * 1000;
+          if (span.endsWith('d')) deltaMs = parseInt(span) * 24 * 60 * 60 * 1000;
+          const start = end - deltaMs;
+          const startIso = new Date(start).toISOString().slice(0, 16);
+          const endIso = new Date(end).toISOString().slice(0, 16);
+          setStartTime(startIso);
+          setEndTime(endIso);
+          // After setting, fetch
+          setTimeout(load, 0);
+        }}
       />
     </div>
   );
@@ -130,6 +164,11 @@ export default function SensorPage() {
   const mainContent = (
     <>
       <h2 style={{ color: "#fff", margin: "8px 0 12px" }}>Sensor: {table}</h2>
+      {(startTime && endTime) && (
+        <div style={{ color: '#aaa', marginBottom: 8 }}>
+          Showing: {new Date(startTime).toLocaleString()} → {new Date(endTime).toLocaleString()}
+        </div>
+      )}
       {err && <div style={{ color: "tomato", marginBottom: 8 }}>{err}</div>}
       {loading ? (
         <div style={{ color: "#e7e7e7" }}>Loading…</div>
@@ -153,4 +192,3 @@ export default function SensorPage() {
 
   return <DashboardLayout drawerContent={drawerContent} mainContent={mainContent} />;
 }
-

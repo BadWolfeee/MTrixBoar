@@ -19,6 +19,13 @@ export async function fetchSensors() {
   return res.json(); // [{ table, name, approx_rows, latest, notes }, ...]
 }
 
+export async function fetchSensorRange(table) {
+  const params = new URLSearchParams({ sensor: table });
+  const res = await fetch(`/api/sensor-data/range?` + params.toString());
+  if (!res.ok) throw new Error("Failed to fetch sensor range");
+  return res.json(); // { min_time, max_time, approx_rows }
+}
+
 // Flexible by-table fetch; supports raw pagination and downsample
 // options: { start, end, limit, offset, order, after, before, downsample, target_points }
 export async function fetchSensorDataByTable(table, options = {}) {
