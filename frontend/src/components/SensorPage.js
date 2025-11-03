@@ -160,6 +160,12 @@ export default function SensorPage() {
     }
   }
 
+  // Keep quick-range highlight in sync when dates change manually
+  useEffect(() => {
+    setActiveQuick(deriveActiveQuick(latest, startTime, endTime));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latest, startTime, endTime]);
+
   const drawerContent = (
     <div>
       <div style={{ marginBottom: 16 }}>

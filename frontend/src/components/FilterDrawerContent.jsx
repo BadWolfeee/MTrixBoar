@@ -28,18 +28,34 @@ const FilterDrawerContent = ({
       }}>
         {[
           ['1h','1H'],['6h','6H'],['24h','24H'],['7d','7D'],['30d','30D'],['180d','180D']
-        ].map(([val,label]) => (
-          <Button
-            key={val}
-            size="medium"
-            variant={activeQuick === val ? 'contained' : 'outlined'}
-            color={activeQuick === val ? 'primary' : 'inherit'}
-            sx={{ fontWeight: 700 }}
-            onClick={() => onQuickRange && onQuickRange(val)}
-          >
-            {label}
-          </Button>
-        ))}
+        ].map(([val,label]) => {
+          const active = activeQuick === val;
+          return (
+            <Button
+              key={val}
+              size="medium"
+              variant={active ? 'contained' : 'outlined'}
+              color={active ? 'primary' : 'inherit'}
+              sx={{
+                fontWeight: 800,
+                ...(active
+                  ? { boxShadow: 'none' }
+                  : {
+                      color: '#cfd8dc',
+                      borderColor: 'rgba(255,255,255,0.2)',
+                      backgroundColor: 'rgba(255,255,255,0.06)',
+                      '&:hover': {
+                        borderColor: '#90caf9',
+                        backgroundColor: 'rgba(144,202,249,0.08)'
+                      },
+                    }),
+              }}
+              onClick={() => onQuickRange && onQuickRange(val)}
+            >
+              {label}
+            </Button>
+          );
+        })}
       </Box>
       <TextField
         label="Start Time"
