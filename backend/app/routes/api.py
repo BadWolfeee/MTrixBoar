@@ -3,9 +3,15 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, text
 from backend.app.models.sensor_data import SensorData
 from backend.app import db
+from backend.app.utils.config import settings
 import re
 
-SENSOR_TABLE_RE = re.compile(r"^sens\d+$")
+# Validate schema name to avoid injection, default to 'public' if invalid
+_SCHEMA_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+SCHEMA = settings.DB_SCHEMA if _SCHEMA_RE.fullmatch(getattr(settings, 'DB_SCHEMA', 'public')) else 'public'
+
+# Compile sensor table name pattern from settings
+SENSOR_TABLE_RE = re.compile(getattr(settings, 'SENSOR_TABLE_PATTERN', r"^sens\d+$"))
 
 api_bp = Blueprint('api', __name__)
 
@@ -119,19 +125,24 @@ def list_sensors():
     - latest (exact latest mt_time)
     """
     # Fast approximate counts for sensXX tables
-    rows = db.session.execute(text("""
+    rows = db.session.execute(
+        text(
+            """
         SELECT relname AS table_name, n_live_tup AS approx_rows
         FROM pg_stat_user_tables
-        WHERE schemaname = 'public' AND relname ~ '^sens\\d+$'
+        WHERE schemaname = :schema AND relname ~ :pattern
         ORDER BY relname
-    """)).mappings().all()
+    """
+        ),
+        {"schema": SCHEMA, "pattern": SENSOR_TABLE_RE.pattern},
+    ).mappings().all()
 
     sensors = []
     for r in rows:
         t = r["table_name"]
 
         # exact latest timestamp from each table (safe-ish dynamic SQL; we validate the name)
-        latest = db.session.execute(text(f'SELECT MAX(mt_time) FROM public."{t}"')).scalar()
+        latest = db.session.execute(text(f'SELECT MAX(mt_time) FROM "{SCHEMA}"."{t}"')).scalar()
 
         sensors.append({
             "table": t,
@@ -162,6 +173,10 @@ def get_sensor_data_by_table():
     start_time_str = request.args.get('start')
     end_time_str = request.args.get('end')
     limit = int(request.args.get('limit', 1000))
+    offset = int(request.args.get('offset', 0))
+    order = request.args.get('order', 'asc').lower()
+    if order not in ("asc", "desc"):
+        return jsonify({'error': 'Invalid order; use asc or desc'}), 400
 
     params, where = {}, []
     if start_time_str:
@@ -181,14 +196,17 @@ def get_sensor_data_by_table():
     where_sql = ("WHERE " + " AND ".join(where)) if where else ""
 
     # Dynamic table name: validated by regex, then quoted as identifier
-    q = text(f'''
+    q = text(
+        f'''
         SELECT mt_time, mt_name, mt_value, mt_quality
-        FROM public."{sensor}"
+        FROM "{SCHEMA}"."{sensor}"
         {where_sql}
-        ORDER BY mt_time ASC
-        LIMIT :limit
-    ''')
+        ORDER BY mt_time {order}
+        LIMIT :limit OFFSET :offset
+    '''
+    )
     params["limit"] = limit
+    params["offset"] = offset
 
     rows = db.session.execute(q, params).mappings().all()
     return jsonify([dict(r) for r in rows])
