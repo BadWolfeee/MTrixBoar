@@ -44,17 +44,23 @@ export default function SensorPage() {
   const [latest, setLatest] = useState(null);
   const [activeQuick, setActiveQuick] = useState(null);
 
-  const load = async () => {
+  const load = async (opts = {}) => {
     if (!table) return;
     setLoading(true);
     setErr("");
     try {
-      const doDownsample = shouldDownsample(startTime, endTime);
+      const useStart = opts.start ?? startTime;
+      const useEnd = opts.end ?? endTime;
+      if (!useStart || !useEnd) {
+        // Without a concrete range, avoid fetching unbounded data
+        return;
+      }
+      const doDownsample = shouldDownsample(useStart, useEnd);
       setUsingDownsample(doDownsample);
       if (doDownsample) {
         const ds = await fetchSensorDataByTable(table, {
-          start: startTime,
-          end: endTime,
+          start: useStart,
+          end: useEnd,
           downsample: true,
           target_points: 2000,
         });
@@ -68,8 +74,8 @@ export default function SensorPage() {
         setNextAfter(null);
       } else {
         const resp = await fetchSensorDataByTable(table, {
-          start: startTime,
-          end: endTime,
+          start: useStart,
+          end: useEnd,
           order: "asc",
           limit: PAGE_SIZE,
         });
@@ -101,10 +107,14 @@ export default function SensorPage() {
             const startIso = new Date(startMs).toISOString().slice(0, 16);
             setStartTime(startIso);
             setEndTime(endIso);
+            // Load explicitly with the computed range to avoid race with state updates
+            await load({ start: startIso, end: endIso });
+            return;
           }
         }
       } catch (_) {}
-      load();
+      // If start/end already present, load with them
+      await load();
     };
     init();
     // eslint-disable-next-line react-hooks/exhaustive-deps

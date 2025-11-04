@@ -1,0 +1,184 @@
+#!/usr/bin/env python3
+import argparse
+import os
+from pathlib import Path
+import numpy as np
+import cv2
+from skimage.morphology import skeletonize
+import svgwrite
+
+# --- Geometry helpers ---
+def rdp(points, epsilon):
+    """Ramer–Douglas–Peucker polyline simplification.
+    points: Nx2 array-like
+    returns: simplified list of [x,y]
+    """
+    if len(points) < 3:
+        return list(map(lambda p: [float(p[0]), float(p[1])], points))
+    pts = np.asarray(points, dtype=float)
+    start, end = pts[0], pts[-1]
+    vec = end - start
+    if np.allclose(vec, 0):
+        dists = np.linalg.norm(pts - start, axis=1)
+    else:
+        # perpendicular distance from line
+        dists = np.abs(np.cross(vec, pts - start)) / (np.linalg.norm(vec) + 1e-9)
+    idx = int(np.argmax(dists))
+    dmax = dists[idx]
+    if dmax > epsilon:
+        left = rdp(pts[: idx + 1], epsilon)
+        right = rdp(pts[idx:], epsilon)
+        return left[:-1] + right
+    else:
+        return [[float(start[0]), float(start[1])], [float(end[0]), float(end[1])]]
+
+# --- Skeleton tracing ---
+NEIGHBORS = [(-1,-1), (0,-1), (1,-1), (-1,0), (1,0), (-1,1), (0,1), (1,1)]
+
+def neighbors(img, x, y):
+    h, w = img.shape
+    for dx, dy in NEIGHBORS:
+        nx, ny = x+dx, y+dy
+        if 0 <= nx < w and 0 <= ny < h and img[ny, nx]:
+            yield nx, ny
+
+def degree(img, x, y):
+    return sum(1 for _ in neighbors(img, x, y))
+
+def trace_paths(skel):
+    """Trace 1-px skeleton into polylines.
+    Returns list of lists of (x,y) points.
+    """
+    sk = skel.astype(np.uint8)
+    h, w = sk.shape
+    visited = np.zeros_like(sk, dtype=bool)
+
+    # endpoints first
+    endpoints = [(x, y) for y in range(h) for x in range(w) if sk[y, x] and degree(sk, x, y) <= 1]
+
+    paths = []
+
+    def walk(start):
+        path = []
+        x, y = start
+        prev = None
+        while True:
+            visited[y, x] = True
+            path.append((x, y))
+            nbrs = [p for p in neighbors(sk, x, y) if not visited[p[1], p[0]]]
+            if prev is not None and prev in nbrs and len(nbrs) >= 2:
+                nbrs.remove(prev)
+            if not nbrs:
+                break
+            # choose next step: prefer continuation direction
+            if prev is None:
+                nxt = nbrs[0]
+            else:
+                vx, vy = x - prev[0], y - prev[1]
+                def score(p):
+                    dx, dy = p[0]-x, p[1]-y
+                    return -(vx*dx + vy*dy)
+                nxt = sorted(nbrs, key=score)[0]
+            prev = (x, y)
+            x, y = nxt
+        return path
+
+    # Walk from endpoints
+    for start in endpoints:
+        if not visited[start[1], start[0]]:
+            paths.append(walk(start))
+
+    # Any cycles or leftover pixels
+    for y in range(h):
+        for x in range(w):
+            if sk[y, x] and not visited[y, x]:
+                paths.append(walk((x, y)))
+
+    return paths
+
+# --- Color masking ---
+
+def color_mask_hsv(img_bgr, color):
+    hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+    if color == 'red':
+        lower1 = np.array([0, 80, 50]); upper1 = np.array([10, 255, 255])
+        lower2 = np.array([170, 80, 50]); upper2 = np.array([180, 255, 255])
+        mask = cv2.inRange(hsv, lower1, upper1) | cv2.inRange(hsv, lower2, upper2)
+    elif color == 'green':
+        lower = np.array([35, 50, 40]); upper = np.array([85, 255, 255])
+        mask = cv2.inRange(hsv, lower, upper)
+    else:
+        raise ValueError('color must be red or green')
+
+    # Clean up small noise and close small gaps
+    k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, k, iterations=1)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, k, iterations=1)
+    return (mask > 0).astype(np.uint8)
+
+# --- SVG writer ---
+
+def write_svg(width, height, polylines_by_color, out_path):
+    dwg = svgwrite.Drawing(out_path, size=(width, height))
+    dwg.add(dwg.rect(insert=(0,0), size=(width, height), fill='none'))
+    for color, lines in polylines_by_color.items():
+        stroke = '#e53935' if color == 'red' else '#2e7d32'
+        for pts in lines:
+            if len(pts) < 2:
+                continue
+            dwg.add(dwg.polyline(points=[(float(x), float(y)) for x,y in pts],
+                                 fill='none', stroke=stroke, stroke_width=1.5,
+                                 stroke_linecap='round', stroke_linejoin='round'))
+    dwg.save()
+
+# --- Main ---
+
+def main():
+    ap = argparse.ArgumentParser(description='Extract red/green lines from PNG to SVG polylines')
+    ap.add_argument('input', help='Path to input PNG')
+    ap.add_argument('-o','--output', help='Output SVG path (default: alongside input)')
+    ap.add_argument('--epsilon', type=float, default=1.5, help='Simplification epsilon in px')
+    ap.add_argument('--min_points', type=int, default=10, help='Discard polylines with fewer points')
+    ap.add_argument('--min_component_area', type=int, default=500, help='Discard tiny components')
+    args = ap.parse_args()
+
+    inp = Path(args.input)
+    out = Path(args.output) if args.output else inp.with_suffix('.svg')
+
+    img = cv2.imread(str(inp), cv2.IMREAD_COLOR)
+    if img is None:
+        raise SystemExit(f'Failed to read image: {inp}')
+    h, w = img.shape[:2]
+
+    polylines_by_color = {}
+    for color in ['green','red']:
+        mask = color_mask_hsv(img, color)
+        # discard tiny connected components (legend bits, noise)
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+        keep = np.zeros_like(mask)
+        for i in range(1, num_labels):
+            area = stats[i, cv2.CC_STAT_AREA]
+            if area >= args.min_component_area:
+                keep[labels == i] = 1
+        if not keep.any():
+            polylines_by_color[color] = []
+            continue
+        # skeletonize to 1px lines
+        skel = skeletonize(keep.astype(bool)).astype(np.uint8)
+        # trace to polylines
+        raw_paths = trace_paths(skel)
+        # simplify
+        simplified = []
+        for path in raw_paths:
+            if len(path) < args.min_points:
+                continue
+            pts = np.array([[x, y] for x,y in path], dtype=float)
+            simp = rdp(pts, args.epsilon)
+            simplified.append(simp)
+        polylines_by_color[color] = [ [(x,y) for x,y in line] for line in simplified ]
+
+    write_svg(w, h, polylines_by_color, str(out))
+    print(f'Wrote SVG: {out}')
+
+if __name__ == '__main__':
+    main()

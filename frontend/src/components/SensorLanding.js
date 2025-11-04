@@ -30,6 +30,23 @@ export default function SensorLanding() {
   return (
     <div style={{ padding: 24 }}>
       <h1 style={{ color: "#fff", marginBottom: 16 }}>Available Sensors</h1>
+      <div style={{ marginBottom: 16 }}>
+        <button
+          onClick={() => navigate('/map')}
+          style={{
+            border: 'none',
+            borderRadius: 12,
+            padding: '10px 14px',
+            background: '#1976d2',
+            color: '#fff',
+            fontWeight: 700,
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+          }}
+        >
+          Open Sensor Map
+        </button>
+      </div>
       <div
         style={{
           display: "grid",
