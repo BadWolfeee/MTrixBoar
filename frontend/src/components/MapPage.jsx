@@ -1,16 +1,19 @@
 ﻿import React, { useEffect, useState } from "react";
 import { Box, Button, FormControlLabel, Switch, Slider, Typography, MenuItem, Select, InputLabel, FormControl, Stack } from "@mui/material";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import DashboardLayout from "../layout/DashboardLayout";
 
 function MapLinesView({ width=3.5, glow=true, glowStrength=1.4, focusIndex=null, scheme='replicate', onGroupCount }){
   const [data, setData] = useState(null);
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const mapKey = params.get('map') || 'lines';
   useEffect(()=>{
-    let active=true; const url = `${process.env.PUBLIC_URL || ''}/maps/lines.json`;
+    let active=true; const url = `${process.env.PUBLIC_URL || ''}/maps/${mapKey}.json`;
     fetch(url).then(r=>r.json()).then(j=>{ if(!active) return; setData(j); onGroupCount && onGroupCount((j.groups||[]).length||0); }).catch(()=>{});
     return ()=>{ active=false };
-  },[onGroupCount]);
+  },[onGroupCount, mapKey]);
 
   const W = data?.width || 1024; const H = data?.height || 768;
   const groups = (data?.groups || []).slice();
