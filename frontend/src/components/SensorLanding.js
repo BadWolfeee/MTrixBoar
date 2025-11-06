@@ -46,6 +46,22 @@ export default function SensorLanding() {
         >
           Open Sensor Map
         </button>
+        <button
+          onClick={() => navigate('/plan?map=map')}
+          style={{
+            border: 'none',
+            borderRadius: 12,
+            padding: '10px 14px',
+            background: '#00a152',
+            color: '#fff',
+            fontWeight: 700,
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+            marginLeft: 12
+          }}
+        >
+          Open Metro Plan
+        </button>
       </div>
       <div
         style={{
