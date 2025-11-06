@@ -39,6 +39,33 @@ function nearestOnPolyline(p, pts) {
   return best; // {dist, s}
 }
 
+// Ramer–Douglas–Peucker simplification for polyline
+function rdp(points, epsilon) {
+  if (!points || points.length < 3) return points || [];
+  function distToSeg(p,a,b){
+    const [x,y]=p,[x1,y1]=a,[x2,y2]=b; const A=x-x1, B=y-y1, C=x2-x1, D=y2-y1; const dot=A*C+B*D; const len2=C*C+D*D; const t=len2? Math.max(0, Math.min(1, dot/len2)) : 0; const dx=x1+t*C - x; const dy=y1+t*D - y; return Math.hypot(dx,dy);
+  }
+  function simplify(pts){
+    let dmax=0, idx=0; const end=pts.length-1;
+    for (let i=1;i<end;i++){ const d=distToSeg(pts[i], pts[0], pts[end]); if (d>dmax){ idx=i; dmax=d; } }
+    if (dmax > epsilon){ const rec1=simplify(pts.slice(0, idx+1)); const rec2=simplify(pts.slice(idx)); return rec1.slice(0,-1).concat(rec2); }
+    return [pts[0], pts[end]];
+  }
+  return simplify(points);
+}
+
+// Get point at normalized arc length along a polyline
+function pointAtS(pts, sNorm){
+  const total = polyLength(pts); if (total===0) return pts[0]||[0,0];
+  const target = Math.max(0, Math.min(1, sNorm)) * total; let acc=0;
+  for (let i=1;i<pts.length;i++){
+    const p0=pts[i-1], p1=pts[i]; const seg=Math.hypot(p1[0]-p0[0], p1[1]-p0[1]);
+    if (acc+seg >= target){ const t=(target-acc)/seg; return [p0[0]+t*(p1[0]-p0[0]), p0[1]+t*(p1[1]-p0[1])]; }
+    acc += seg;
+  }
+  return pts[pts.length-1];
+}
+
 function PlanSvg({ plan, width=1024, height=600, strokeWidth=6, glow=false }){
   const colors = ["#e74c3c","#2ecc71","#40c4ff","#ffd740","#ab47bc","#ff9100","#69f0ae","#ff8a80","#82b1ff","#ffff00"];
   return (
