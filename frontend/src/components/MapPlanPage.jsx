@@ -51,11 +51,12 @@ function PlanSvg({ plan, width=1024, height=600, strokeWidth=6, glow=false }){
       </defs>
       {plan.lines.map((ln, idx)=>{
         const c = colors[idx % colors.length];
-        const d = ln.stations.map((s,i)=> `${i===0?'M':'L'} ${s.x} ${s.y}`).join(' ');
+        const pathPts = ln.pathPts && ln.pathPts.length ? ln.pathPts : (ln.stations||[]).map(s=>[s.x,s.y]);
+        const d = pathPts.map((p,i)=> `${i===0?'M':'L'} ${p[0]} ${p[1]}`).join(' ');
         return (
           <g key={idx} stroke={c} fill="none" filter={glow? 'url(#soft-glow)' : undefined}>
             <path d={d} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
-            {ln.stations.map((s,i)=> (
+            {(ln.stations||[]).map((s,i)=> (
               <g key={i}>
                 <circle cx={s.x} cy={s.y} r={strokeWidth*0.8} fill="#1e1f22" stroke={c} strokeWidth={3} />
                 {s.label && <text x={s.x+10} y={s.y-10} fontSize={12} fill="#e0e0e0">{s.label}</text>}
@@ -77,6 +78,8 @@ export default function MapPlanPage(){
   const [sensors, setSensors] = useState([]);
   const [strokeWidth, setStrokeWidth] = useState(6);
   const [glow, setGlow] = useState(true);
+  const [preserveShape, setPreserveShape] = useState(false);
+  const [epsilon, setEpsilon] = useState(8);
 
   useEffect(()=>{
     let alive=true; const url = `${process.env.PUBLIC_URL || ''}/maps/${mapKey}.json`;
@@ -131,20 +134,35 @@ export default function MapPlanPage(){
       stations.sort((a,b)=> a.pos - b.pos);
       stations.forEach((st, idx)=> mapped[gi].push({ sensor:{ code: `S${idx+1}`}, pos: st.pos }));
     });
-    // build plan lines: lay stations horizontally by arc order
-    const gapX = 80; const gapY = 90; const left = 50; const top = 60;
-    const lines = mapped.map((arr, gi)=>{
-      const sorted = arr.sort((a,b)=> a.pos - b.pos);
-      const y = top + gi*gapY;
-      const n = Math.max(sorted.length, 2);
-      const stations = sorted.map((a,i)=> ({ x:left + i*gapX, y, label:a.sensor.code }));
-      // ensure we always draw something even if no sensors matched
-      if (stations.length<2){ stations.push({x:left, y}); stations.push({x:left+gapX, y}); }
-      return { stations };
+    if (!preserveShape){
+      // Horizontal lanes
+      const gapX = 80; const gapY = 90; const left = 50; const top = 60;
+      const lines = mapped.map((arr, gi)=>{
+        const sorted = arr.sort((a,b)=> a.pos - b.pos);
+        const y = top + gi*gapY;
+        const stations = sorted.map((a,i)=> ({ x:left + i*gapX, y, label:a.sensor.code }));
+        if (stations.length<2){ stations.push({x:left, y}); stations.push({x:left+gapX, y}); }
+        return { stations };
+      });
+      const h = top + (lines.length? (lines.length-1)*gapY : 0) + 80;
+      return { width: 1024, height: h, lines };
+    }
+    // Preserve shape: simplify trunks, compute bbox and transform
+    const simpTrunks = trunks.map(t => ({ pts: rdp(t.poly, epsilon) }));
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    simpTrunks.forEach(t=> (t.pts||[]).forEach(([x,y])=>{ if(x<minX)minX=x; if(y<minY)minY=y; if(x>maxX)maxX=x; if(y>maxY)maxY=y; }));
+    if (!isFinite(minX) || !isFinite(minY)) return { width:1024, height:600, lines:[] };
+    const pad=40; const targetW=1024; const scale=(targetW-2*pad)/Math.max(1, maxX-minX); const targetH=(maxY-minY)*scale + 2*pad;
+    const tx=(x)=> (x-minX)*scale + pad; const ty=(y)=> (y-minY)*scale + pad;
+    const lines = simpTrunks.map((t, gi)=>{
+      const sorted = (mapped[gi]||[]).sort((a,b)=> a.pos - b.pos);
+      const stations = sorted.map(a => { const p=pointAtS(t.pts, a.pos); return { x:tx(p[0]), y:ty(p[1]), label:a.sensor.code }; });
+      const pathPts = (t.pts||[]).map(p=>[tx(p[0]), ty(p[1])]);
+      if (stations.length<2 && pathPts.length>=2){ stations.push({x:pathPts[0][0], y:pathPts[0][1]}); stations.push({x:pathPts[pathPts.length-1][0], y:pathPts[pathPts.length-1][1]}); }
+      return { stations, pathPts };
     });
-    const h = top + (lines.length? (lines.length-1)*gapY : 0) + 80;
-    return { width: 1024, height: h, lines };
-  }, [raw, sensors]);
+    return { width: targetW, height: targetH, lines };
+  }, [raw, sensors, preserveShape, epsilon]);
 
   const drawerContent = (
     <Box>
@@ -161,6 +179,13 @@ export default function MapPlanPage(){
       <Typography gutterBottom>Line stroke</Typography>
       <Slider min={3} max={12} step={1} value={strokeWidth} onChange={(_e,v)=> setStrokeWidth(Array.isArray(v)? v[0] : v)} sx={{ width:'90%', ml:1, mb:1 }} />
       <FormControlLabel control={<Switch checked={glow} onChange={(e)=> setGlow(e.target.checked)} />} label="Glow" />
+      <FormControlLabel control={<Switch checked={preserveShape} onChange={(e)=> setPreserveShape(e.target.checked)} />} label="Preserve map shape" />
+      {preserveShape && (
+        <>
+          <Typography gutterBottom>Simplify epsilon</Typography>
+          <Slider min={2} max={20} step={1} value={epsilon} onChange={(_e,v)=> setEpsilon(Array.isArray(v)? v[0] : v)} sx={{ width:'90%', ml:1, mb:1 }} />
+        </>
+      )}
     </Box>
   );
 
