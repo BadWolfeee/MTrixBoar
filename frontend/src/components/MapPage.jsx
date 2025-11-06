@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Button, FormControlLabel, Switch, Slider, Typography, MenuItem, Select, InputLabel, FormControl, Stack } from "@mui/material";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import { Link, useLocation } from "react-router-dom";

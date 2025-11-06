@@ -180,12 +180,28 @@ export default function MapPlanPage(){
     // map sensors to nearest trunk (only if a matching .ini is available or this is the base 'map')
     const mapped = trunks.map(()=> []);
     if (sensorsSource !== 'none') {
+      // Try to respect sensor line id (kg) by matching kg orders to group orders by vertical position
+      const groupsY = trunks.map(t => {
+        const pts=t.poly||[]; const m = pts.length? pts.reduce((a,p)=>a+p[1],0)/pts.length : 0; return m; });
+      const groupOrder = groupsY.map((y,i)=>({i,y})).sort((a,b)=> a.y-b.y).map(o=>o.i); // 0=top
+      const kgSet = Array.from(new Set(sensors.map(s=> s.kg).filter(k=> k!=null)));
+      const kgY = kgSet.map(kg=>{
+        const arr = sensors.filter(s=> s.kg===kg); const m = arr.length? arr.reduce((a,s)=>a+s.y,0)/arr.length : 0; return {kg, y:m};
+      }).sort((a,b)=> a.y-b.y).map(o=>o.kg);
+      const mapKgToGroup = new Map();
+      const mlen = Math.min(groupOrder.length, kgY.length);
+      for (let i=0;i<mlen;i++){ mapKgToGroup.set(kgY[i], groupOrder[i]); }
+
       for (const s of sensors){
-        let best={gi:-1, dist:Infinity, s:0, L:1};
-        trunks.forEach((t,gi)=>{
-          if (!t.poly || t.poly.length<2) return; const m=nearestOnPolyline([s.x,s.y], t.poly); if (m.dist<best.dist){ best={gi, dist:m.dist, s:m.s, L:polyLength(t.poly)}; }
-        });
-        if (best.gi>=0 && best.dist <= 12){ // tighter tolerance to avoid mismatches
+        let targetGi = mapKgToGroup.has(s.kg) ? mapKgToGroup.get(s.kg) : -1;
+        const search = (gi)=>{
+          let best={gi:-1, dist:Infinity, s:0, L:1};
+          const indices = gi>=0 ? [gi] : trunks.map((_t,idx)=>idx);
+          for (const j of indices){ const t=trunks[j]; if (!t.poly||t.poly.length<2) continue; const m=nearestOnPolyline([s.x,s.y], t.poly); if (m.dist<best.dist){ best={gi:j, dist:m.dist, s:m.s, L:polyLength(t.poly)}; } }
+          return best;
+        };
+        const best = search(targetGi);
+        if (best.gi>=0 && best.dist <= 14){
           mapped[best.gi].push({ sensor:s, pos: Math.max(0, Math.min(1, best.s / (best.L||1))) });
         }
       }
