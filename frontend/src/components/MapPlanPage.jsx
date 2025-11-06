@@ -39,6 +39,34 @@ function nearestOnPolyline(p, pts) {
   return best; // {dist, s}
 }
 
+// Merge long polylines by snapping endpoints within tolerance (greedy)
+function mergeLongPolylines(polys, minLen=120, tol=6) {
+  const longs = (polys||[]).filter(pl => polyLength(pl) >= minLen).map(pl => pl.slice());
+  if (!longs.length) return [];
+  // pick start: leftmost x
+  let startIdx = 0; let minX = Infinity;
+  longs.forEach((pl,i)=>{ const x = pl[0][0]; if (x < minX){ minX = x; startIdx = i; } });
+  const used = new Array(longs.length).fill(false);
+  let path = longs[startIdx].slice(); used[startIdx]=true;
+  function close(a,b){ const dx=a[0]-b[0], dy=a[1]-b[1]; return (dx*dx+dy*dy) <= tol*tol; }
+  while (true){
+    let best = {i:-1, flip:false, d:Infinity};
+    const end = path[path.length-1];
+    for (let i=0;i<longs.length;i++){
+      if (used[i]) continue; const pl=longs[i];
+      if (close(end, pl[0])) { best={i, flip:false, d:0}; break; }
+      if (close(end, pl[pl.length-1])) { best={i, flip:true, d:0}; break; }
+    }
+    if (best.i === -1) break;
+    const add = longs[best.i];
+    used[best.i]=true;
+    if (best.flip) add.reverse();
+    // avoid duplicate join point
+    path = path.concat(add.slice(1));
+  }
+  return path;
+}
+
 // Ramer–Douglas–Peucker simplification for polyline
 function rdp(points, epsilon) {
   if (!points || points.length < 3) return points || [];
@@ -175,7 +203,12 @@ export default function MapPlanPage(){
       return { width: 1024, height: h, lines };
     }
     // Preserve shape: simplify trunks, compute bbox and transform
-    const simpTrunks = trunks.map(t => ({ pts: rdp(t.poly, epsilon) }));
+    const simpTrunks = raw.groups.map((g, gi) => {
+      // try to merge long segments to better approximate the trunk
+      const merged = mergeLongPolylines(g.polylines||[], 120, 6);
+      const base = (merged && merged.length>1) ? merged : trunks[gi].poly;
+      return { pts: rdp(base, epsilon) };
+    });
     let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
     simpTrunks.forEach(t=> (t.pts||[]).forEach(([x,y])=>{ if(x<minX)minX=x; if(y<minY)minY=y; if(x>maxX)maxX=x; if(y>maxY)maxY=y; }));
     if (!isFinite(minX) || !isFinite(minY)) return { width:1024, height:600, lines:[] };
