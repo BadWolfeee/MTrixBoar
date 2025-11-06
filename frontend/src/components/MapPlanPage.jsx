@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Box, Button, Typography, Slider, FormControl, InputLabel, Select, MenuItem, Stack, FormControlLabel, Switch } from "@mui/material";
+import { Box, Button, Typography, Slider, FormControl, InputLabel, Select, MenuItem, FormControlLabel, Switch } from "@mui/material";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import { Link, useLocation } from "react-router-dom";
 import DashboardLayout from "../layout/DashboardLayout";
@@ -108,13 +108,35 @@ export default function MapPlanPage(){
         mapped[best.gi].push({ sensor:s, pos: Math.max(0, Math.min(1, best.s / (best.L||1))) });
       }
     }
+    // Fallback: if no sensors mapped, infer stations from fins (short polylines near trunk)
+    raw.groups.forEach((g, gi) => {
+      if ((mapped[gi]||[]).length > 0) return;
+      const trunk = trunks[gi]; if (!trunk.poly || trunk.poly.length<2) return;
+      const L = polyLength(trunk.poly);
+      const fins = (g.polylines||[]).filter(pl => polyLength(pl) < 80); // short attachments
+      const stations = [];
+      fins.forEach(pl => {
+        // use both endpoints
+        const ends = [pl[0], pl[pl.length-1]];
+        ends.forEach(p => {
+          const m = nearestOnPolyline([p[0],p[1]], trunk.poly);
+          if (m.dist <= 18){ stations.push({ pos: Math.max(0, Math.min(1, (m.s/(L||1)))) }); }
+        });
+      });
+      // if still empty, sample evenly
+      if (stations.length < 5){
+        const n=12; for (let i=0;i<n;i++){ stations.push({ pos: (i/(n-1)) }); }
+      }
+      // push as pseudo sensors with generated labels
+      stations.sort((a,b)=> a.pos - b.pos);
+      stations.forEach((st, idx)=> mapped[gi].push({ sensor:{ code: `S${idx+1}`}, pos: st.pos }));
+    });
     // build plan lines: lay stations horizontally by arc order
     const gapX = 80; const gapY = 90; const left = 50; const top = 60;
     const lines = mapped.map((arr, gi)=>{
       const sorted = arr.sort((a,b)=> a.pos - b.pos);
       const y = top + gi*gapY;
       const n = Math.max(sorted.length, 2);
-      const width = (n-1) * gapX;
       const stations = sorted.map((a,i)=> ({ x:left + i*gapX, y, label:a.sensor.code }));
       // ensure we always draw something even if no sensors matched
       if (stations.length<2){ stations.push({x:left, y}); stations.push({x:left+gapX, y}); }
@@ -154,4 +176,3 @@ export default function MapPlanPage(){
 
   return <DashboardLayout drawerContent={drawerContent} mainContent={mainContent} />;
 }
-
