@@ -131,6 +131,7 @@ export default function MapPlanPage(){
 
   const [raw, setRaw] = useState(null); // grouped lines JSON
   const [sensors, setSensors] = useState([]);
+  const [sensorsSource, setSensorsSource] = useState('auto');
   const [strokeWidth, setStrokeWidth] = useState(6);
   const [glow, setGlow] = useState(true);
   const [preserveShape, setPreserveShape] = useState(false);
@@ -143,9 +144,30 @@ export default function MapPlanPage(){
   },[mapKey]);
 
   useEffect(()=>{
-    let alive=true; fetch(dataUrl).then(r=>r.text()).then(t=>{ if(!alive) return; setSensors(parseIni(t));}).catch(()=>{});
+    let alive=true;
+    (async () => {
+      try {
+        // Prefer a map-specific .ini if present; otherwise only use default for base 'map'
+        const specific = `${process.env.PUBLIC_URL || ''}/maps/${mapKey}.ini`;
+        const r = await fetch(specific);
+        if (r.ok) {
+          const txt = await r.text();
+          if (alive) { setSensors(parseIni(txt)); setSensorsSource(`${mapKey}.ini`); }
+          return;
+        }
+        if (mapKey === 'map') {
+          const r2 = await fetch(dataUrl);
+          if (r2.ok) {
+            const t = await r2.text();
+            if (alive) { setSensors(parseIni(t)); setSensorsSource('data.ini'); }
+          } else if (alive) { setSensors([]); setSensorsSource('none'); }
+        } else if (alive) { setSensors([]); setSensorsSource('none'); }
+      } catch (_e) {
+        if (alive) { setSensors([]); setSensorsSource('none'); }
+      }
+    })();
     return ()=>{ alive=false };
-  },[]);
+  },[mapKey]);
 
   const plan = useMemo(()=>{
     if (!raw || !raw.groups) return { width: 1024, height: 600, lines: [] };
@@ -155,17 +177,21 @@ export default function MapPlanPage(){
       for (const pl of polys){ const L=polyLength(pl); if (L>bestL){ bestL=L; best=pl; } }
       return { color: g.color || '#fff', poly: best||[] };
     });
-    // map sensors to nearest trunk
+    // map sensors to nearest trunk (only if a matching .ini is available or this is the base 'map')
     const mapped = trunks.map(()=> []);
-    for (const s of sensors){
-      let best={gi:-1, dist:Infinity, s:0, L:1};
-      trunks.forEach((t,gi)=>{
-        if (!t.poly || t.poly.length<2) return; const m=nearestOnPolyline([s.x,s.y], t.poly); if (m.dist<best.dist){ best={gi, dist:m.dist, s:m.s, L:polyLength(t.poly)}; }
-      });
-      if (best.gi>=0 && best.dist <= 30){ // tolerance
-        mapped[best.gi].push({ sensor:s, pos: Math.max(0, Math.min(1, best.s / (best.L||1))) });
+    if (sensorsSource !== 'none') {
+      for (const s of sensors){
+        let best={gi:-1, dist:Infinity, s:0, L:1};
+        trunks.forEach((t,gi)=>{
+          if (!t.poly || t.poly.length<2) return; const m=nearestOnPolyline([s.x,s.y], t.poly); if (m.dist<best.dist){ best={gi, dist:m.dist, s:m.s, L:polyLength(t.poly)}; }
+        });
+        if (best.gi>=0 && best.dist <= 12){ // tighter tolerance to avoid mismatches
+          mapped[best.gi].push({ sensor:s, pos: Math.max(0, Math.min(1, best.s / (best.L||1))) });
+        }
       }
     }
+    // If very few matched sensors total, ignore them and use geometric inference instead
+    const matchedTotal = mapped.reduce((a,arr)=> a + arr.length, 0);
     // Fallback: if no sensors mapped, infer stations from fins (short polylines near trunk)
     raw.groups.forEach((g, gi) => {
       if ((mapped[gi]||[]).length > 0) return;
