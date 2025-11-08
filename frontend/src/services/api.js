@@ -1,4 +1,4 @@
-import axios from 'axios';
+// axios is unused; rely on fetch for now
 
 // export async function getSensorData() {
 //  const response = await axios.get('/api/sensor-data');

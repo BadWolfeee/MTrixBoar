@@ -5,8 +5,11 @@
   "main": "index.js",
   "scripts": {
     "dev:front": "npm --prefix frontend start",
-    "dev:back": ".\\\\.venv\\\\Scripts\\\\python.exe main.py",
-    "dev:all": "concurrently \"npm --prefix frontend start\" \".\\\\.venv\\\\Scripts\\\\python.exe main.py\"",
+    "dev:back": "node scripts/run-backend.js",
+    "dev:all": "concurrently \"npm --prefix frontend start\" \"node scripts/run-backend.js\"",
+    "start:back": "node scripts/start-backend-prod.js",
+    "fix:ini-utf8": "node -e \"try{require('iconv-lite')}catch(_){process.exit(0)}\" || npm i -D iconv-lite && node scripts/convert-ini-encoding.js",
+    "build:sensors": "node -e \"try{require('iconv-lite')}catch(_){process.exit(0)}\" || npm i -D iconv-lite && node scripts/ini-to-sensors-json.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

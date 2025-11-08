@@ -2,7 +2,6 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
-  "proxy": "http://localhost:5000",
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
@@ -14,6 +13,8 @@
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.8.4",
     "frontend": "file:",
+    "http-proxy-middleware": "^3.0.0",
+    "dotenv": "^16.4.5",
     "plotly.js": "^3.0.1",
     "react-plotly.js": "^2.6.0",
     "react-router-dom": "^7.8.2",

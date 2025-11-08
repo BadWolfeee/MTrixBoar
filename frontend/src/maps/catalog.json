@@ -1,0 +1,10 @@
+{
+  "maps": [
+    { "key": "Deblin",   "label": "Deblin" },
+    { "key": "Suchodoly", "label": "Suchodoly" },
+    { "key": "Wolica",    "label": "Wolica" },
+    { "key": "MichowKG25","label": "Michów KG25" },
+    { "key": "MichowKG3", "label": "Michów KG3" }
+  ]
+}
+
